@@ -17,23 +17,29 @@ This will generate a package.json file.
 express: The web framework.
 hbs: Handlebars templating engine for Express.
 path: To manage file paths (already built-in in Node.js).
+Install CleanCSS
+Install Terser
+Install express-handlebars
 
 Run the following command to install the dependencies:
-/// npm install express hbs
+/// npm install express
+/// npm install clean-css-cli --save-dev
+/// npm install terser --save-dev
+/// npm install express-handlebars --save
 
 ## Step 3: Create the Project Structure
 
 Create the following folder structure:
 
 gbnode/
-├── views/
-│ └── index.hbs
-├── public/
-│ ├── css/
-│ │ └── style.css
-│ └── js/
-│ └── script.js
-├── app.js
+├── views/  
+│ └── index.hbs  
+├── public/  
+│ ├── css/  
+│ │ └── style.css  
+│ ├── js/  
+│ │ └── script.js  
+├── app.js  
 └── package.json
 
 ## Step 4: Set Up the Express App with Handlebars.js
@@ -57,3 +63,7 @@ Create a script.js file inside public/js/ directory:
 ## Step 7: Running the App Locally
 
 Now you can run your app locally by executing:
+
+## Step 8: Install Nodemon Locally (specific to your project):
+
+/// npm install --save-dev nodemon
