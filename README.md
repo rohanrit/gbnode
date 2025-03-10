@@ -31,7 +31,7 @@ Run the following command to install the dependencies:
 
 Create the following folder structure:
 
-gbnode/
+gbnode/  
 ├── views/  
 │ └── index.hbs  
 ├── public/  
