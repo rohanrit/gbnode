@@ -26,14 +26,14 @@ Run the following command to install the dependencies:
 Create the following folder structure:
 
 gbnode/
-├── views/
-│ └── index.hbs
-├── public/
-│ ├── css/
-│ │ └── style.css
-│ └── js/
-│ └── script.js
-├── app.js
+├── views/  
+│ └── index.hbs  
+├── public/  
+│ ├── css/  
+│ │ └── style.css  
+│ ├── js/  
+│ │ └── script.js  
+├── app.js  
 └── package.json
 
 ## Step 4: Set Up the Express App with Handlebars.js
