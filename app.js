@@ -5,103 +5,111 @@ const hbs = require("hbs");
 const CleanCSS = require("clean-css");
 const Terser = require("terser");
 const { engine } = require("express-handlebars");
+const Handlebars = require("handlebars");
 
 const app = express();
-app.engine("hbs", engine({ extname: ".hbs" }));
 
-// Set the view engine to Handlebars (hbs)
+// Register Handlebars engine
+app.engine("hbs", engine({
+  defaultLayout: false,
+  layoutsDir: path.join(__dirname, "views/layouts"),
+  partialsDir: path.join(__dirname, "views/partials"),
+  extname: ".hbs"
+}));
 app.set("view engine", "hbs");
-
-// Set up views directory
 app.set("views", path.join(__dirname, "views"));
 
-// Set up partials directory (optional)
+// Register partials
 hbs.registerPartials(path.join(__dirname, "views/partials"));
 
-// Serve static files (CSS, JS, images, etc.) from the 'public' directory
-app.use(express.static(path.join(__dirname, "public")));
+// Directories
+const distDir = path.join(__dirname, "dist");
+const publicDir = path.join(__dirname, "public");
 
-// Function to generate static HTML from Handlebars templates
+// Serve static files (dist in production, public in dev)
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(distDir));
+} else {
+  app.use(express.static(publicDir));
+}
+
+// Ensure dist folder exists
+if (!fs.existsSync(distDir)) {
+  fs.mkdirSync(distDir);
+}
+
+// Function to generate static HTML
 function generateStaticHTML() {
   const data = { title: "My Express App", message: "Welcome to my Express app with Handlebars!" };
+  const templateFile = fs.readFileSync(path.join(__dirname, "views", "index.hbs"), "utf-8");
+  const template = Handlebars.compile(templateFile);
+  const html = template(data);
 
-  // Render the 'index' template to HTML
-  hbs.render(path.join(__dirname, "views", "index.hbs"), data, (err, html) => {
-    if (err) {
-      console.error("Error rendering Handlebars template:", err);
-      return;
-    }
-
-    // Save the rendered HTML to a file in the public folder
-    fs.writeFile(path.join(__dirname, "public", "index.html"), html, (err) => {
-      if (err) {
-        console.error("Error writing HTML file:", err);
-      } else {
-        console.log("Static HTML file has been generated and saved!");
-      }
-    });
-  });
+  fs.writeFileSync(path.join(distDir, "index.html"), html);
+  console.log("Static HTML file has been generated in dist!");
 }
 
 // Function to minify CSS
 function minifyCSS() {
-  const inputCSS = fs.readFileSync(path.join(__dirname, "public", "css", "style.css"), "utf-8");
-
-  // Minify CSS using CleanCSS
+  const inputCSS = fs.readFileSync(path.join(publicDir, "css", "style.css"), "utf-8");
   const outputCSS = new CleanCSS().minify(inputCSS).styles;
 
-  // Save the minified CSS to a new file
-  fs.writeFile(path.join(__dirname, "public", "css", "style.min.css"), outputCSS, (err) => {
-    if (err) {
-      console.error("Error writing minified CSS:", err);
-    } else {
-      console.log("CSS file has been minified and saved!");
-    }
-  });
+  const cssDir = path.join(distDir, "css");
+  if (!fs.existsSync(cssDir)) fs.mkdirSync(cssDir);
+
+  fs.writeFileSync(path.join(cssDir, "style.min.css"), outputCSS);
+  console.log("CSS file has been minified into dist/css!");
 }
 
 // Function to minify JS
 function minifyJS() {
-  const inputJS = fs.readFileSync(path.join(__dirname, "public", "js", "script.js"), "utf-8");
+  const inputJS = fs.readFileSync(path.join(publicDir, "js", "script.js"), "utf-8");
 
-  // Minify JS using Terser
   Terser.minify(inputJS).then((minified) => {
     if (minified.error) {
       console.error("Error minifying JS:", minified.error);
     } else {
-      // Save the minified JS to a new file
-      fs.writeFile(path.join(__dirname, "public", "js", "script.min.js"), minified.code, (err) => {
-        if (err) {
-          console.error("Error writing minified JS:", err);
-        } else {
-          console.log("JS file has been minified and saved!");
-        }
-      });
+      const jsDir = path.join(distDir, "js");
+      if (!fs.existsSync(jsDir)) fs.mkdirSync(jsDir);
+
+      fs.writeFileSync(path.join(jsDir, "script.min.js"), minified.code);
+      console.log("JS file has been minified into dist/js!");
     }
   });
 }
 
-// Run these functions to generate the static files
+// Build static assets
 function buildStaticAssets() {
-  // Generate static HTML
-  generateStaticHTML();
-
-  // Minify CSS
-  minifyCSS();
-
-  // Minify JS
-  minifyJS();
+  try {
+    generateStaticHTML();
+    minifyCSS();
+    minifyJS();
+  } catch (err) {
+    console.error("Build error:", err);
+  }
 }
-
-// Call the build function
 buildStaticAssets();
 
-// Route to render the index page (for local development)
-app.get("/", (req, res) => {
-  res.render("index", { title: "My Express App", message: "Welcome to my Express app with Handlebars!" });
+// Route to render index page (dev mode)
+app.get("/", (req, res, next) => {
+  try {
+    res.render("index", { title: "My Express App", message: "Welcome to my Express app with Handlebars!" });
+  } catch (err) {
+    next(err);
+  }
 });
 
-// Start the server
+// Error-handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).render("error", {
+    title: "Error",
+    message: "Something went wrong!",
+    error: err.message
+  });
+});
+
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
