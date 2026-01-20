@@ -1,17 +1,22 @@
-<!-- views/index.hbs -->
+{{!-- views/index.hbs --}}
+{{!-- This file is the base template that gets compiled with selected partials --}}
 
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{title}}</title>
-    <link rel="stylesheet" href="/css/style.css" />
-  </head>
-  <body>
-    <div class="container">
-      <h1>{{message}}</h1>
-      <p>This is a simple Express app using Handlebars as the templating engine.</p>
-      <script src="/js/script.js"></script>
-    </div>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <title>{{title}}</title>
+  <link rel="stylesheet" href="css/style.min.css">
+</head>
+<body>
+  {{!-- Render the dynamic content (partials injected by app.js) --}}
+  {{{body}}}
+
+  {{!-- Optional footer --}}
+  <footer class="text-center p-3 bg-light">
+    <small>&copy; {{year}} My Static Site Generator</small>
+  </footer>
+
+  <script src="js/script.min.js"></script>
+</body>
 </html>

@@ -1,116 +1,133 @@
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
-const hbs = require("hbs");
-const CleanCSS = require("clean-css");
-const Terser = require("terser");
 const { engine } = require("express-handlebars");
 const Handlebars = require("handlebars");
+const sass = require("sass");
+const Terser = require("terser");
+const crypto = require("crypto");
+const { PurgeCSS } = require("purgecss");
+const CleanCSS = require("clean-css");
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Register Handlebars engine
+// Handlebars engine (used for section partials)
 app.engine("hbs", engine({
-  defaultLayout: false,
+  extname: ".hbs",
   layoutsDir: path.join(__dirname, "views/layouts"),
-  partialsDir: path.join(__dirname, "views/partials"),
-  extname: ".hbs"
+  partialsDir: path.join(__dirname, "views/partials")
 }));
 app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, "views"));
 
-// Register partials
-hbs.registerPartials(path.join(__dirname, "views/partials"));
-
-// Directories
 const distDir = path.join(__dirname, "dist");
 const publicDir = path.join(__dirname, "public");
+if (!fs.existsSync(distDir)) fs.mkdirSync(distDir);
 
-// Serve static files (dist in production, public in dev)
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(distDir));
-} else {
-  app.use(express.static(publicDir));
+// Serve generator UI and other static assets from public/
+app.use(express.static(publicDir));
+
+// Serve generated sites 
+app.use("/dist", express.static(path.join(__dirname, "dist")));
+
+// Generate unique site ID
+function generateId() {
+  return "site-" + crypto.randomBytes(4).toString("hex");
 }
 
-// Ensure dist folder exists
-if (!fs.existsSync(distDir)) {
-  fs.mkdirSync(distDir);
-}
-
-// Function to generate static HTML
-function generateStaticHTML() {
-  const data = { title: "My Express App", message: "Welcome to my Express app with Handlebars!" };
-  const templateFile = fs.readFileSync(path.join(__dirname, "views", "index.hbs"), "utf-8");
+// Generate HTML
+function generateStaticHTML(sections, siteDir) {
+  const templateFile = fs.readFileSync(path.join(__dirname, "views/index.hbs"), "utf-8");
   const template = Handlebars.compile(templateFile);
-  const html = template(data);
 
-  fs.writeFileSync(path.join(distDir, "index.html"), html);
-  console.log("Static HTML file has been generated in dist!");
-}
-
-// Function to minify CSS
-function minifyCSS() {
-  const inputCSS = fs.readFileSync(path.join(publicDir, "css", "style.css"), "utf-8");
-  const outputCSS = new CleanCSS().minify(inputCSS).styles;
-
-  const cssDir = path.join(distDir, "css");
-  if (!fs.existsSync(cssDir)) fs.mkdirSync(cssDir);
-
-  fs.writeFileSync(path.join(cssDir, "style.min.css"), outputCSS);
-  console.log("CSS file has been minified into dist/css!");
-}
-
-// Function to minify JS
-function minifyJS() {
-  const inputJS = fs.readFileSync(path.join(publicDir, "js", "script.js"), "utf-8");
-
-  Terser.minify(inputJS).then((minified) => {
-    if (minified.error) {
-      console.error("Error minifying JS:", minified.error);
-    } else {
-      const jsDir = path.join(distDir, "js");
-      if (!fs.existsSync(jsDir)) fs.mkdirSync(jsDir);
-
-      fs.writeFileSync(path.join(jsDir, "script.min.js"), minified.code);
-      console.log("JS file has been minified into dist/js!");
+  let content = "";
+  sections.forEach(section => {
+    const partialPath = path.join(__dirname, `views/partials/${section}.hbs`);
+    if (fs.existsSync(partialPath)) {
+      content += fs.readFileSync(partialPath, "utf-8");
     }
   });
+
+  const html = template({ title: "Custom Site", body: content, year: new Date().getFullYear() });
+  fs.writeFileSync(path.join(siteDir, "index.html"), html);
+  console.log("✅ HTML generated");
 }
 
-// Build static assets
-function buildStaticAssets() {
-  try {
-    generateStaticHTML();
-    minifyCSS();
-    minifyJS();
-  } catch (err) {
-    console.error("Build error:", err);
-  }
-}
-buildStaticAssets();
+// Compile Bootstrap with overrides
+function buildBootstrapCSS(config, siteDir) {
+  const scss = `
+    @use "bootstrap" with (
+      $primary: ${config.primaryColor || "#007bff"},
+      $font-family-base: "${config.fontFamily || "Arial, sans-serif"}",
+    );
+  `;
 
-// Route to render index page (dev mode)
-app.get("/", (req, res, next) => {
-  try {
-    res.render("index", { title: "My Express App", message: "Welcome to my Express app with Handlebars!" });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Error-handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).render("error", {
-    title: "Error",
-    message: "Something went wrong!",
-    error: err.message
+  const result = sass.compileString(scss, {
+    style: "compressed",
+    loadPaths: [path.join(__dirname, "node_modules/bootstrap/scss")],
+    quietDeps: true
   });
+
+  const cssDir = path.join(siteDir, "css");
+  if (!fs.existsSync(cssDir)) fs.mkdirSync(cssDir);
+  const cssPath = path.join(cssDir, "style.min.css");
+  fs.writeFileSync(cssPath, result.css);
+  console.log("✅ Bootstrap CSS built with overrides");
+  return cssPath;
+}
+
+// Optimize CSS (remove unused selectors + minify)
+async function optimizeCSS(siteDir, cssPath) {
+  const cssContent = fs.readFileSync(cssPath, "utf-8");
+  const purgeCSSResult = await new PurgeCSS().purge({
+    content: [path.join(siteDir, "index.html"), path.join(siteDir, "js/script.min.js")],
+    css: [{ raw: cssContent }]
+  });
+  const optimizedCSS = new CleanCSS({ level: 2 }).minify(purgeCSSResult[0].css).styles;
+  fs.writeFileSync(cssPath, optimizedCSS);
+  console.log("✅ CSS optimized (unused selectors removed + minified)");
+}
+
+// Minify JS
+async function minifyJS(siteDir) {
+  const inputJS = fs.readFileSync(path.join(publicDir, "js/script.js"), "utf-8");
+  const minified = await Terser.minify(inputJS);
+  if (!minified.error) {
+    const jsDir = path.join(siteDir, "js");
+    if (!fs.existsSync(jsDir)) fs.mkdirSync(jsDir);
+    const jsPath = path.join(jsDir, "script.min.js");
+    fs.writeFileSync(jsPath, minified.code);
+    console.log("✅ JS minified");
+    return jsPath;
+  }
+}
+
+// API endpoint to build site
+app.post("/build", async (req, res) => {
+  const { sections, bootstrapConfig } = req.body;
+  try {
+    const siteId = generateId();
+    const siteDir = path.join(distDir, siteId);
+    fs.mkdirSync(siteDir, { recursive: true });
+
+    generateStaticHTML(sections, siteDir);
+    const cssPath = buildBootstrapCSS(bootstrapConfig, siteDir);
+    const jsPath = await minifyJS(siteDir);
+    await optimizeCSS(siteDir, cssPath);
+
+    res.json({ success: true, message: "Site built successfully!", output: `/dist/${siteId}/index.html` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+// Default route just serves generator.html from public/
+app.get("/", (req, res) => {
+  res.sendFile(path.join(publicDir, "generator.html"));
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

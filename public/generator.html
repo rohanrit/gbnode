@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Site Generator</title>
+</head>
+<body>
+  <h1>Static Site Generator</h1>
+  <form id="generatorForm">
+    <h3>Select Sections:</h3>
+    <label><input type="checkbox" name="sections" value="hero"> Hero</label><br>
+    <label><input type="checkbox" name="sections" value="about"> About</label><br>
+    <label><input type="checkbox" name="sections" value="contact"> Contact</label><br>
+
+    <h3>Bootstrap Customization:</h3>
+    <label>Primary Color: <input type="text" name="primaryColor" value="#007bff"></label><br>
+    <label>Font Family: <input type="text" name="fontFamily" value="Arial, sans-serif"></label><br>
+
+    <button type="submit">Generate Site</button>
+  </form>
+
+  <!-- Container for the link button -->
+  <div id="result" style="margin-top:20px;"></div>
+
+  <script>
+    document.getElementById("generatorForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const sections = formData.getAll("sections");
+      const bootstrapConfig = {
+        primaryColor: formData.get("primaryColor"),
+        fontFamily: formData.get("fontFamily")
+      };
+
+      const res = await fetch("/build", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sections, bootstrapConfig })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Show a button linking to the generated page
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = `
+          <p>✅ Site generated successfully!</p>
+          <a href="${data.output}" target="_blank">
+            <button type="button">View Generated Page</button>
+          </a>
+        `;
+      } else {
+        alert("Error: " + data.error);
+      }
+    });
+  </script>
+</body>
+</html>
