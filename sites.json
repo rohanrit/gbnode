@@ -1,0 +1,54 @@
+[
+  {
+    "id": "site-91cc00cd",
+    "path": "/dist/site-91cc00cd/index.html",
+    "timestamp": "2026-01-20T08:37:34.967Z",
+    "sections": [
+      "header-default",
+      "about-team",
+      "contact-basic",
+      "services"
+    ],
+    "bootstrapConfig": {
+      "primaryColor": "#ff004c",
+      "secondaryColor": "#dcdee0",
+      "fontFamily": "Arial, sans-serif",
+      "borderRadius": "0.25rem",
+      "bodyBg": "#3a2c2c"
+    }
+  },
+  {
+    "id": "site-64880dfb",
+    "path": "/dist/site-64880dfb/index.html",
+    "timestamp": "2026-01-20T08:40:57.498Z",
+    "sections": [],
+    "bootstrapConfig": {
+      "primaryColor": "#e1ff00",
+      "secondaryColor": "#7e6d79",
+      "fontFamily": "Arial, sans-serif",
+      "borderRadius": "1.25rem",
+      "bodyBg": "#19cc37"
+    }
+  },
+  {
+    "id": "site-812ac3c4",
+    "path": "/dist/site-812ac3c4/index.html",
+    "timestamp": "2026-01-20T08:41:13.654Z",
+    "sections": [
+      "header-default",
+      "header-alt",
+      "about-team",
+      "about-company",
+      "contact-basic",
+      "contact-form",
+      "services"
+    ],
+    "bootstrapConfig": {
+      "primaryColor": "#e1ff00",
+      "secondaryColor": "#7e6d79",
+      "fontFamily": "Arial, sans-serif",
+      "borderRadius": "1.25rem",
+      "bodyBg": "#19cc37"
+    }
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "primaryColor",
+    "label": "Primary Color",
+    "type": "color",
+    "default": "#007bff",
+    "variable": "$primary"
+  },
+  {
+    "name": "secondaryColor",
+    "label": "Secondary Color",
+    "type": "color",
+    "default": "#6c757d",
+    "variable": "$secondary"
+  },
+  {
+    "name": "fontFamily",
+    "label": "Font Family",
+    "type": "text",
+    "default": "Arial, sans-serif",
+    "variable": "$font-family-base"
+  },
+  {
+    "name": "borderRadius",
+    "label": "Border Radius",
+    "type": "text",
+    "default": "0.25rem",
+    "variable": "$border-radius"
+  },
+  {
+    "name": "bodyBg",
+    "label": "Body Background",
+    "type": "color",
+    "default": "#ffffff",
+    "variable": "$body-bg"
+  }
+]

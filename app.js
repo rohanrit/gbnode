@@ -38,22 +38,54 @@ function generateId() {
 }
 
 // Generate HTML
-function generateStaticHTML(sections, siteDir) {
-  const templateFile = fs.readFileSync(path.join(__dirname, "views/index.hbs"), "utf-8");
+function generateStaticHTML(sections, siteDir, siteId) {
+  // Load base template
+  const templateFile = fs.readFileSync(
+    path.join(__dirname, "views/index.hbs"),
+    "utf-8"
+  );
   const template = Handlebars.compile(templateFile);
 
+  // Load section registry
+  const sectionsFile = path.join(__dirname, "sections.json");
+  const allSections = fs.existsSync(sectionsFile)
+    ? JSON.parse(fs.readFileSync(sectionsFile, "utf-8"))
+    : [];
+
+  // Build page content
   let content = "";
-  sections.forEach(section => {
-    const partialPath = path.join(__dirname, `views/partials/${section}.hbs`);
-    if (fs.existsSync(partialPath)) {
-      content += fs.readFileSync(partialPath, "utf-8");
+  const metaSections = [];
+
+  sections.forEach(sectionName => {
+    const sectionDef = allSections.find(s => s.name === sectionName);
+    if (sectionDef) {
+      const partialPath = path.join(__dirname, "views/partials", sectionDef.file);
+      if (fs.existsSync(partialPath)) {
+        const snippet = fs.readFileSync(partialPath, "utf-8");
+        content += snippet;
+        metaSections.push({
+          name: sectionDef.name,
+          label: sectionDef.label,
+          category: sectionDef.category,
+          file: sectionDef.file,
+          content: snippet
+        });
+      }
     }
   });
 
-  const html = template({ title: "Custom Site", body: content, year: new Date().getFullYear() });
+  // Compile final HTML
+  const html = template({
+    title: "Custom Site",
+    body: content,
+    year: new Date().getFullYear()
+  });
   fs.writeFileSync(path.join(siteDir, "index.html"), html);
+
   console.log("✅ HTML generated");
+  return metaSections; // return metadata to /build
 }
+
 
 // Compile Bootstrap with overrides
 function buildBootstrapCSS(config, siteDir) {
@@ -112,21 +144,90 @@ app.post("/build", async (req, res) => {
     const siteDir = path.join(distDir, siteId);
     fs.mkdirSync(siteDir, { recursive: true });
 
-    generateStaticHTML(sections, siteDir);
+    // Generate HTML and get section metadata
+    const metaSections = generateStaticHTML(sections, siteDir, siteId);
+
+    // Build CSS/JS
     const cssPath = buildBootstrapCSS(bootstrapConfig, siteDir);
     const jsPath = await minifyJS(siteDir);
     await optimizeCSS(siteDir, cssPath);
 
-    res.json({ success: true, message: "Site built successfully!", output: `/dist/${siteId}/index.html` });
+    // Write meta.json here (with bootstrapConfig)
+    const meta = {
+      id: siteId,
+      title: "Custom Site",
+      header: { navItems: ["Home", "About", "Contact"] },
+      sections: metaSections,
+      footer: { text: `© ${new Date().getFullYear()} My Static Site Generator` },
+      bootstrapConfig
+    };
+    fs.writeFileSync(
+      path.join(siteDir, "meta.json"),
+      JSON.stringify(meta, null, 2)
+    );
+
+    // Update global sites.json log
+    const logFile = path.join(__dirname, "sites.json");
+    let sites = [];
+    if (fs.existsSync(logFile)) {
+      sites = JSON.parse(fs.readFileSync(logFile, "utf-8"));
+    }
+    sites.push({
+      id: siteId,
+      path: `/dist/${siteId}/index.html`,
+      timestamp: new Date().toISOString(),
+      sections,
+      bootstrapConfig
+    });
+    fs.writeFileSync(logFile, JSON.stringify(sites, null, 2));
+
+    res.json({
+      success: true,
+      message: "Site built successfully!",
+      output: `/dist/${siteId}/index.html`
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+
+
 // Default route just serves generator.html from public/
 app.get("/", (req, res) => {
   res.sendFile(path.join(publicDir, "generator.html"));
+});
+
+app.get("/sections", (req, res) => {
+  const sectionsFile = path.join(__dirname, "sections.json");
+  if (fs.existsSync(sectionsFile)) {
+    const sections = JSON.parse(fs.readFileSync(sectionsFile, "utf-8"));
+    res.json(sections);
+  } else {
+    res.json([]);
+  }
+});
+
+// Route to serve sites.json
+app.get("/sites.json", (req, res) => {
+  const logFile = path.join(__dirname, "sites.json");
+  if (fs.existsSync(logFile)) {
+    const sites = JSON.parse(fs.readFileSync(logFile, "utf-8"));
+    res.json(sites);
+  } else {
+    res.json([]);
+  }
+});
+
+app.get("/bootstrap-variables", (req, res) => {
+  const varsFile = path.join(__dirname, "bootstrap-variables.json");
+  if (fs.existsSync(varsFile)) {
+    const vars = JSON.parse(fs.readFileSync(varsFile, "utf-8"));
+    res.json(vars);
+  } else {
+    res.json([]);
+  }
 });
 
 const PORT = process.env.PORT || 3000;

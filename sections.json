@@ -1,0 +1,44 @@
+[
+  {
+    "name": "header-default",
+    "label": "Header (Default)",
+    "file": "header-default.hbs",
+    "category": "header"
+  },
+  {
+    "name": "header-alt",
+    "label": "Header (Alternative)",
+    "file": "header-alt.hbs",
+    "category": "header"
+  },
+  {
+    "name": "about-team",
+    "label": "About (Team)",
+    "file": "about-team.hbs",
+    "category": "about"
+  },
+  {
+    "name": "about-company",
+    "label": "About (Company)",
+    "file": "about-company.hbs",
+    "category": "about"
+  },
+  {
+    "name": "contact-basic",
+    "label": "Contact (Basic)",
+    "file": "contact-basic.hbs",
+    "category": "contact"
+  },
+  {
+    "name": "contact-form",
+    "label": "Contact (Form)",
+    "file": "contact-form.hbs",
+    "category": "contact"
+  },
+  {
+    "name": "services",
+    "label": "Services",
+    "file": "services.hbs",
+    "category": "services"
+  }
+]

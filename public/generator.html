@@ -1,56 +1,133 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>Site Generator</title>
-</head>
-<body>
-  <h1>Static Site Generator</h1>
-  <form id="generatorForm">
-    <h3>Select Sections:</h3>
-    <label><input type="checkbox" name="sections" value="hero"> Hero</label><br>
-    <label><input type="checkbox" name="sections" value="about"> About</label><br>
-    <label><input type="checkbox" name="sections" value="contact"> Contact</label><br>
+  <head>
+    <title>Site Generator</title>
+  </head>
+  <body>
+    <h1>Static Site Generator</h1>
+    <form id="generatorForm">
+      <h3>Select Sections:</h3>
+      <div id="sections"></div>
 
-    <h3>Bootstrap Customization:</h3>
-    <label>Primary Color: <input type="text" name="primaryColor" value="#007bff"></label><br>
-    <label>Font Family: <input type="text" name="fontFamily" value="Arial, sans-serif"></label><br>
+      <h3>Bootstrap Customization:</h3>
+      <div id="bootstrapConfig"></div>
 
-    <button type="submit">Generate Site</button>
-  </form>
+      <button type="submit">Generate Site</button>
+    </form>
 
-  <!-- Container for the link button -->
-  <div id="result" style="margin-top:20px;"></div>
+    <div id="result"></div>
+    <div id="siteList" style="margin-top: 20px"></div>
+    <script>
+      // Handle form submission
+      document
+        .getElementById("generatorForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
 
-  <script>
-    document.getElementById("generatorForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const sections = formData.getAll("sections");
-      const bootstrapConfig = {
-        primaryColor: formData.get("primaryColor"),
-        fontFamily: formData.get("fontFamily")
-      };
+          // Collect selected sections
+          const sections = formData.getAll("sections");
 
-      const res = await fetch("/build", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sections, bootstrapConfig })
-      });
-      const data = await res.json();
+          // Collect all bootstrap customization inputs dynamically
+          const bootstrapConfig = {};
+          formData.forEach((value, key) => {
+            if (key !== "sections") {
+              bootstrapConfig[key] = value;
+            }
+          });
 
-      if (data.success) {
-        // Show a button linking to the generated page
-        const resultDiv = document.getElementById("result");
-        resultDiv.innerHTML = `
-          <p>✅ Site generated successfully!</p>
-          <a href="${data.output}" target="_blank">
-            <button type="button">View Generated Page</button>
-          </a>
-        `;
-      } else {
-        alert("Error: " + data.error);
+          // Send build request
+          const res = await fetch("/build", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sections, bootstrapConfig }),
+          });
+          const data = await res.json();
+
+          const resultDiv = document.getElementById("result"); // ✅ fixed missing reference
+          if (data.success) {
+            resultDiv.innerHTML = `
+        <p>✅ Site generated successfully!</p>
+        <a href="${data.output}" target="_blank">
+          <button type="button">View Generated Page</button>
+        </a>
+      `;
+
+            // Refresh generated sites list
+            loadSites();
+          } else {
+            alert("Error: " + data.error);
+          }
+        });
+
+      // Function to load generated sites list
+      async function loadSites() {
+        const res = await fetch("/sites.json");
+        if (res.ok) {
+          const sites = await res.json();
+          const listDiv = document.getElementById("siteList");
+          if (sites.length > 0) {
+            listDiv.innerHTML =
+              "<h3>Generated Sites</h3><ul>" +
+              sites
+                .map(
+                  (s) => `
+                <li>
+                  <a href="${s.path}" target="_blank">${s.id}</a>
+                  <small>(${new Date(s.timestamp).toLocaleString()})</small>
+                </li>
+              `,
+                )
+                .join("") +
+              "</ul>";
+          } else {
+            listDiv.innerHTML = "<p>No sites generated yet.</p>";
+          }
+        }
       }
-    });
-  </script>
-</body>
+
+      // Load sites list on page load
+      loadSites();
+
+      // Function to load available sections dynamically
+      async function loadSections() {
+        const res = await fetch("/sections");
+        const sections = await res.json();
+        const container = document.getElementById("sections");
+        container.innerHTML =
+          "<h3>Select Sections:</h3>" +
+          sections
+            .map(
+              (s) => `
+            <label>
+              <input type="checkbox" name="sections" value="${s.name}">
+              ${s.label} (${s.category})
+            </label><br>
+          `,
+            )
+            .join("");
+      }
+      loadSections();
+
+      // Function to load bootstrap customization variables dynamically
+      async function loadBootstrapVars() {
+        const res = await fetch("/bootstrap-variables");
+        const vars = await res.json();
+        const container = document.getElementById("bootstrapConfig");
+        container.innerHTML =
+          "<h3>Bootstrap Customization:</h3>" +
+          vars
+            .map(
+              (v) => `
+            <label>
+              ${v.label}: 
+              <input type="${v.type}" name="${v.name}" value="${v.default}">
+            </label><br>
+          `,
+            )
+            .join("");
+      }
+      loadBootstrapVars();
+    </script>
+  </body>
 </html>
